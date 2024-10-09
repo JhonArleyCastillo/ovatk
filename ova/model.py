@@ -10,6 +10,7 @@ load_env()
 class OvaModel:
     def __init__(self):
         self.connection = None
+        self.connect_to_database()
 
     def connect_to_database(self):
         try:
@@ -26,6 +27,16 @@ class OvaModel:
             print(f"Error en la conexión: {err}")
 
     def save_user_data(self, user_data):
+        if self.connection is None:
+            print("Error: No hay conexión a la base de datos.")
+            return False  # o intenta reconectar aquí
+
+        # Verificar si la conexión está activa
+        if not self.connection.is_connected():
+            print("Error: La conexión a la base de datos se ha perdido.")
+            return False  # o intenta reconectar aquí
+
+            # Proceder a guardar los datos si la conexión es válida
         try:
             if self.connection.is_connected():
                 cursor = self.connection.cursor()
@@ -40,6 +51,7 @@ class OvaModel:
                 self.connection.commit()
 
                 print("Datos guardados en la base de datos.")
+                cursor.close()
 
         except mysql.connector.Error as err:
             print(f"Error al guardar datos: {err}")

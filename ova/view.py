@@ -3,46 +3,71 @@ from tkinter.scrolledtext import ScrolledText
 from tkinter import messagebox
 import pyttsx3
 import re
+from model import OvaModel
+from PIL import Image, ImageTk
+
+
+model = OvaModel()
+
 class OvaView:
     def __init__(self, root):
         self.root = root
+        root.geometry("800x600")
         self.root.title("OVA Interface")
+        
+        # Cargar la imagen original
+        self.original_image = Image.open("ova/sri.jpg")
+        self.background_image = ImageTk.PhotoImage(self.original_image)
 
-        # Frame para el formulario
-        form_frame = tk.Frame(root)
-        form_frame.pack(side=tk.TOP, padx=10, pady=10)
+        # Crear un Canvas y agregar la imagen de fondo
+        self.canvas = tk.Canvas(root, width=800, height=600)
+        self.canvas.pack(fill="both", expand=True)
+
+        # Colocar la imagen en el Canvas
+        self.background = self.canvas.create_image(0, 0, image=self.background_image, anchor="nw")
+
+        # Redimensionar la imagen cuando se ajusta la ventana
+        self.root.bind("<Configure>", self.ajustar_imagen)
+
+        # Frame para el formulario (colocado dentro del canvas)
+        form_frame = tk.Frame(self.canvas, bg="white", bd=2)
+        self.canvas.create_window(400, 150, window=form_frame, anchor="n")
 
         # Campos del formulario
         self.create_form(form_frame)
 
-        # Text area para mostrar mensajes
-        self.text_area = ScrolledText(root, wrap=tk.WORD, width=50, height=20, font=("Arial", 12))
-        self.text_area.pack(pady=10, padx=10)
+        # Text area para mostrar mensajes (colocado dentro del canvas)
+        self.text_area = ScrolledText(self.canvas, wrap=tk.WORD, width=50, height=10, font=("Arial", 12))
+        self.canvas.create_window(400, 300, window=self.text_area, anchor="n")
 
-        # Frame para los botones
-        button_frame = tk.Frame(root)
-        button_frame.pack(pady=10)  # Colocamos el contenedor de botones debajo del área de texto
-
+        # Frame para los botones (colocado dentro del canvas)
+        button_frame = tk.Frame(self.canvas, bg="white")
+        self.canvas.create_window(400, 500, window=button_frame, anchor="n")
 
         # Botón 1: Iniciar OVA
         self.start_button = tk.Button(button_frame, text="Iniciar OVA")
-        self.start_button.grid(row=0, column=0, padx=5)  # Botón 1 en la primera posición
+        self.start_button.grid(row=0, column=0, padx=5)
 
         # Botón 2: Reiniciar
         self.reset_button = tk.Button(button_frame, text="Reiniciar", command=self.reset_system, state=tk.DISABLED)
-        self.reset_button.grid(row=0, column=1, padx=5)  # Botón 2 en la segunda posición
+        self.reset_button.grid(row=0, column=1, padx=5)
 
         # Botón 3: Terminar OVA
         self.terminate_button = tk.Button(button_frame, text="Terminar OVA", command=self.terminate_system, state=tk.DISABLED)
-        self.terminate_button.grid(row=0, column=2, padx=5)  # Botón 3 en la tercera posición
- 
+        self.terminate_button.grid(row=0, column=2, padx=5)
+
         # Botón para enviar datos
-        self.submit_button = tk.Button(form_frame, text="Enviar Datos")
+        self.submit_button = tk.Button(form_frame, text="Enviar Datos", command=self.send_data)
         self.submit_button.grid(row=5, column=1, pady=10)
+
+        # Motor de texto a voz
+        self.tts_engine = self.init_tts_engine()
+        self.is_speaking = False
         
         # Motor de texto a voz
         self.tts_engine = self.init_tts_engine()
         self.is_speaking = False 
+        
     def create_form(self, form_frame):
         # Nombre
         tk.Label(form_frame, text="Nombre:").grid(row=0, column=0, sticky="w")
@@ -68,6 +93,12 @@ class OvaView:
         tk.Label(form_frame, text="Correo Electrónico:").grid(row=4, column=0, sticky="w")
         self.email_entry = tk.Entry(form_frame, width=30)
         self.email_entry.grid(row=4, column=1)
+
+    def ajustar_imagen(self, event):
+        # Redimensionar la imagen al tamaño actual de la ventana
+        nueva_imagen = self.original_image.resize((event.width, event.height))
+        self.background_image = ImageTk.PhotoImage(nueva_imagen)
+        self.canvas.itemconfig(self.background, image=self.background_image)
 
     def reset_system(self):
         """
@@ -179,7 +210,7 @@ class OvaView:
                 self.speak("Dime qué respuesta te gustaría cambiar.")
                 self.log_message("Dime qué respuesta te gustaría cambiar.")
 
-                # Mostrar preguntas actuales y respuestas para que el usuario elija
+                # Mostrar preguntas y respuestas actuales
                 for i, question in enumerate(questions):
                     self.log_message(f"{i+1}. {question}: {responses[question]}")
                     self.speak(f"{i+1}. {question}: {responses[question]}")
@@ -193,27 +224,43 @@ class OvaView:
                     if question_choice:
                         question_choice_normalized = question_choice.lower()
 
-                        # Convertir la respuesta hablada a un número usando el diccionario
+                        # Convertir respuesta hablada a número usando el diccionario
                         if question_choice_normalized in number_mapping:
                             chosen_number = number_mapping[question_choice_normalized]
-                            chosen_question = questions[chosen_number - 1]  # Ajustar índice
-                            self.speak(f"Vas a cambiar la respuesta a: {chosen_question}. Por favor, di la nueva respuesta.")
-                            self.log_message(f"Vas a cambiar la respuesta a: {chosen_question}. Por favor, di la nueva respuesta.")
 
-                            valid_new_response = False
-                            while not valid_new_response:
-                                new_response = controller.listen_for_response()
-                                if new_response:
-                                    responses[chosen_question] = new_response
-                                    valid_new_response = True
-                                    self.speak("Respuesta actualizada.")
-                                    self.log_message(f"Respuesta actualizada para {chosen_question}: {new_response}")
-                                    break
+                            # Validar que el número esté dentro del rango de preguntas
+                            if 1 <= chosen_number <= len(questions):
+                                chosen_question = questions[chosen_number - 1]  # Ajustar índice
+                                self.speak(f"Vas a cambiar la respuesta a: {chosen_question}. Por favor, di la nueva respuesta.")
+                                self.log_message(f"Vas a cambiar la respuesta a: {chosen_question}. Por favor, di la nueva respuesta.")
+
+                                valid_new_response = False
+                                while not valid_new_response:
+                                    new_response = controller.listen_for_response()
+
+                                    # Validar que la nueva respuesta no esté vacía
+                                    if new_response:
+                                        responses[chosen_question] = new_response
+                                        valid_new_response = True
+                                        self.speak("Respuesta actualizada.")
+                                        self.log_message(f"Respuesta actualizada para {chosen_question}: {new_response}")
+                                        break  # Salimos del ciclo después de actualizar la respuesta
+                                    else:
+                                        self.speak("La respuesta no puede estar vacía. Intenta nuevamente.")
+                                        self.log_message("El usuario intentó dar una respuesta vacía.")
+                                        break
+                            else:
+                                self.speak("El número que elegiste no es válido. Intenta de nuevo.")
+                                self.log_message("El usuario seleccionó un número fuera de rango.")
+                                break
                         else:
                             self.speak("Opción no válida. Por favor, elige un número correcto.")
                             self.log_message("Opción no válida. Por favor, elige un número correcto.")
+                            break
                     else:
                         self.speak("No se entendió la respuesta. Por favor, intenta nuevamente.")
+                        self.log_message("Respuesta del usuario no entendida, pidiendo nuevamente.")
+                        break
 
                 # Preguntar si quiere modificar otra respuesta después de modificar una
                 self.speak("¿Te gustaría cambiar otra respuesta? Responde sí o no.")
@@ -223,14 +270,32 @@ class OvaView:
                 # Verificar si el usuario quiere cambiar otra respuesta
                 if not (change_another and re.search(r'(sí|si|yes)', change_another.lower())):
                     modifying_responses = False  # Salir del ciclo si no quiere cambiar otra respuesta
+                    break  # Importante para evitar repetir la pregunta de modificación
 
             elif change_response and re.search(r'(no|no quiero|no necesito)', change_response.lower()):
                 modifying_responses = False
                 self.speak("Gracias, no se realizarán cambios.")
                 self.log_message("El usuario decidió no realizar cambios.")
             else:
-                self.speak("Por favor, responde 'si' o 'no'.")
-                self.log_message("Esperando una respuesta válida...")
+                self.speak("Por favor, responde 'sí' o 'no'.")
+                self.log_message("Respuesta inválida, esperando respuesta válida...")
+                break  # Evita el bucle continuo cuando la respuesta es inválida
 
-        # Después de modificaciones, preguntar si desea guardar las respuestas
-        controller.ask_to_save(responses)
+        # Preguntar si desea guardar los cambios
+        self.speak("¿Te gustaría guardar las respuestas modificadas? Responde sí o no.")
+        self.log_message("¿Te gustaría guardar las respuestas modificadas? Responde sí o no.")
+        save_response = controller.listen_for_response()
+
+        if save_response and re.search(r'(sí|si|yes)', save_response.lower()):
+            controller.ask_to_save(responses)  # Guardar las respuestas
+        else:
+            self.speak("No se guardarán los cambios.")
+            self.log_message("El usuario decidió no guardar los cambios.")
+
+    def send_data(self,):
+        user_data = self.get_form_data()
+        if not all(user_data.values()):
+            self.show_error("Por favor, completa todos los campos.")
+            return
+        model.save_user_data(user_data)
+        self.log_message("Datos enviados.")
