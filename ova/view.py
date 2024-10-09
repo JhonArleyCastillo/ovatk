@@ -206,7 +206,7 @@ class OvaView:
             change_response = controller.listen_for_response()
 
             if change_response and re.search(r'(sí|si|yes)', change_response.lower()):
-                valid_change_response = True
+                valid_change_response = False
                 self.speak("Dime qué respuesta te gustaría cambiar.")
                 self.log_message("Dime qué respuesta te gustaría cambiar.")
 
@@ -215,8 +215,7 @@ class OvaView:
                     self.log_message(f"{i+1}. {question}: {responses[question]}")
                     self.speak(f"{i+1}. {question}: {responses[question]}")
 
-                valid_question_choice = False
-                while not valid_question_choice:
+                while not valid_change_response:  # Usar bandera para controlar el flujo
                     self.speak("Indica el número de la respuesta que quieres cambiar.")
                     self.log_message("Indica el número de la respuesta que quieres cambiar.")
                     question_choice = controller.listen_for_response()
@@ -244,23 +243,19 @@ class OvaView:
                                         valid_new_response = True
                                         self.speak("Respuesta actualizada.")
                                         self.log_message(f"Respuesta actualizada para {chosen_question}: {new_response}")
-                                        break  # Salimos del ciclo después de actualizar la respuesta
+                                        valid_change_response = True  # Actualización válida, salir del ciclo
                                     else:
                                         self.speak("La respuesta no puede estar vacía. Intenta nuevamente.")
                                         self.log_message("El usuario intentó dar una respuesta vacía.")
-                                        break
                             else:
                                 self.speak("El número que elegiste no es válido. Intenta de nuevo.")
                                 self.log_message("El usuario seleccionó un número fuera de rango.")
-                                break
                         else:
                             self.speak("Opción no válida. Por favor, elige un número correcto.")
                             self.log_message("Opción no válida. Por favor, elige un número correcto.")
-                            break
                     else:
                         self.speak("No se entendió la respuesta. Por favor, intenta nuevamente.")
                         self.log_message("Respuesta del usuario no entendida, pidiendo nuevamente.")
-                        break
 
                 # Preguntar si quiere modificar otra respuesta después de modificar una
                 self.speak("¿Te gustaría cambiar otra respuesta? Responde sí o no.")
@@ -270,7 +265,6 @@ class OvaView:
                 # Verificar si el usuario quiere cambiar otra respuesta
                 if not (change_another and re.search(r'(sí|si|yes)', change_another.lower())):
                     modifying_responses = False  # Salir del ciclo si no quiere cambiar otra respuesta
-                    break  # Importante para evitar repetir la pregunta de modificación
 
             elif change_response and re.search(r'(no|no quiero|no necesito)', change_response.lower()):
                 modifying_responses = False
@@ -278,8 +272,7 @@ class OvaView:
                 self.log_message("El usuario decidió no realizar cambios.")
             else:
                 self.speak("Por favor, responde 'sí' o 'no'.")
-                self.log_message("Respuesta inválida, esperando respuesta válida...")
-                break  # Evita el bucle continuo cuando la respuesta es inválida
+                self.log_message("Respuesta inválida, esperando respuesta válida.")
 
         # Preguntar si desea guardar los cambios
         self.speak("¿Te gustaría guardar las respuestas modificadas? Responde sí o no.")

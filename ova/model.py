@@ -27,20 +27,19 @@ class OvaModel:
             print(f"Error en la conexión: {err}")
 
     def save_user_data(self, user_data):
-        if self.connection is None:
+        # Verificar si la conexión existe y está activa
+        if self.connection is None or not self.connection.is_connected():
             print("Error: No hay conexión a la base de datos.")
-            return False  # o intenta reconectar aquí
+            try:
+                self.connection.reconnect()  # Intentar reconectar
+                print("Reconexión exitosa.")
+            except mysql.connector.Error as err:
+                print(f"Error al intentar reconectar: {err}")
+                return False
 
-        # Verificar si la conexión está activa
-        if not self.connection.is_connected():
-            print("Error: La conexión a la base de datos se ha perdido.")
-            return False  # o intenta reconectar aquí
-
-            # Proceder a guardar los datos si la conexión es válida
+        # Proceder a guardar los datos si la conexión es válida
         try:
-            if self.connection.is_connected():
-                cursor = self.connection.cursor()
-
+            with self.connection.cursor() as cursor:
                 query = """
                     INSERT INTO user_data (name, age, address, phone, email)
                     VALUES (%s, %s, %s, %s, %s)
@@ -49,13 +48,15 @@ class OvaModel:
 
                 cursor.execute(query, values)
                 self.connection.commit()
-
                 print("Datos guardados en la base de datos.")
-                cursor.close()
-
         except mysql.connector.Error as err:
+            self.connection.rollback()
             print(f"Error al guardar datos: {err}")
-    
+            return False
+        except Exception as e:
+            print(f"Error inesperado: {e}")
+            return False
+
     def get_user_data(self, user_id):
         try:
             cursor = self.connection.cursor(dictionary=True)

@@ -30,7 +30,7 @@ class OvaController:
 
     def terminate_ova(self):
         self.view.log_message("OVA terminada por el usuario.")
-        self.view.speak("Terminando la OVA, gracias.")
+        self.view.speak("Terminando OVA, gracias.")
 
         if self.ova_thread and self.ova_thread.is_alive():
             self.ova_thread.join()
@@ -209,7 +209,7 @@ class OvaController:
 
             # Convertir palabras a números
             for word, digit in number_word_mapping.items():
-                phone_input = phone_input.replace(word, digit)
+                phone_input = phone_input.replace(word, str(digit))
 
             # Eliminar cualquier carácter que no sea dígito (letras, símbolos, etc.)
             phone_input = re.sub(r'\D', '', phone_input)
