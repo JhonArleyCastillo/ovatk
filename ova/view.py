@@ -16,7 +16,7 @@ class OvaView:
         self.root.title("OVA Interface")
         
         # Cargar la imagen original
-        self.original_image = Image.open("ova/sri.jpg")
+        self.original_image = Image.open("ova/sri.ico")
         self.background_image = ImageTk.PhotoImage(self.original_image)
 
         # Crear un Canvas y agregar la imagen de fondo
@@ -45,29 +45,34 @@ class OvaView:
         self.canvas.create_window(400, 500, window=button_frame, anchor="n")
 
         # Botón 1: Iniciar OVA
-        self.start_button = tk.Button(button_frame, text="Iniciar OVA")
+        self.start_button = tk.Button(button_frame, bg="green", text="Iniciar OVA")
         self.start_button.grid(row=0, column=0, padx=5)
 
         # Botón 2: Reiniciar
-        self.reset_button = tk.Button(button_frame, text="Reiniciar", command=self.reset_system, state=tk.DISABLED)
+        self.reset_button = tk.Button(button_frame, text="Reiniciar",  command=self.reset_system, state=tk.DISABLED)
         self.reset_button.grid(row=0, column=1, padx=5)
 
         # Botón 3: Terminar OVA
         self.terminate_button = tk.Button(button_frame, text="Terminar OVA", command=self.terminate_system, state=tk.DISABLED)
         self.terminate_button.grid(row=0, column=2, padx=5)
+        
+        self.quit_button = tk.Button(button_frame, text="Cerrar OVA", command=self.root.destroy)
+        self.quit_button.grid(row=0, column=3, padx=5)
 
         # Botón para enviar datos
         self.submit_button = tk.Button(form_frame, text="Enviar Datos", command=self.send_data)
         self.submit_button.grid(row=5, column=1, pady=10)
-
-        # Motor de texto a voz
-        self.tts_engine = self.init_tts_engine()
-        self.is_speaking = False
         
         # Motor de texto a voz
         self.tts_engine = self.init_tts_engine()
         self.is_speaking = False 
-        
+
+    def ajustar_imagen(self, event):
+        # Redimensionar la imagen al tamaño actual de la ventana
+        nueva_imagen = self.original_image.resize((event.width, event.height))
+        self.background_image = ImageTk.PhotoImage(nueva_imagen)
+        self.canvas.itemconfig(self.background, image=self.background_image)
+
     def create_form(self, form_frame):
         # Nombre
         tk.Label(form_frame, text="Nombre:").grid(row=0, column=0, sticky="w")
@@ -94,11 +99,6 @@ class OvaView:
         self.email_entry = tk.Entry(form_frame, width=30)
         self.email_entry.grid(row=4, column=1)
 
-    def ajustar_imagen(self, event):
-        # Redimensionar la imagen al tamaño actual de la ventana
-        nueva_imagen = self.original_image.resize((event.width, event.height))
-        self.background_image = ImageTk.PhotoImage(nueva_imagen)
-        self.canvas.itemconfig(self.background, image=self.background_image)
 
     def reset_system(self):
         """
