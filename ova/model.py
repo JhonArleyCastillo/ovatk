@@ -23,19 +23,20 @@ class OvaModel:
             )
             if self.connection.is_connected():
                 print("Conexión a la base de datos establecida.")
+                return self.connection 
         except mysql.connector.Error as err:
             print(f"Error en la conexión: {err}")
+            self.connection = None  # Asegúrate de asignar None si la conexión falla
+            return None
 
     def save_user_data(self, user_data):
         # Verificar si la conexión existe y está activa
         if self.connection is None or not self.connection.is_connected():
             print("Error: No hay conexión a la base de datos.")
-            try:
-                self.connection.reconnect()  # Intentar reconectar
-                print("Reconexión exitosa.")
-            except mysql.connector.Error as err:
-                print(f"Error al intentar reconectar: {err}")
-                return False
+            self.connection = self.connect_to_database()  # Intentar reconectar
+            if self.connection is None:
+                print("Error al intentar reconectar.")
+                return False  # Si la reconexión falla, salimos de la función
 
         # Proceder a guardar los datos si la conexión es válida
         try:
@@ -49,10 +50,13 @@ class OvaModel:
                 cursor.execute(query, values)
                 self.connection.commit()
                 print("Datos guardados en la base de datos.")
+                return True
+            
         except mysql.connector.Error as err:
             self.connection.rollback()
             print(f"Error al guardar datos: {err}")
             return False
+        
         except Exception as e:
             print(f"Error inesperado: {e}")
             return False
@@ -72,7 +76,8 @@ class OvaModel:
             print(f"Error al obtener los datos del usuario: {err}")
             return None
         finally:
-            cursor.close()
+            if cursor:
+                cursor.close() #Se asegura el cierre del cursor
             
     def close_connection(self):
         if self.connection and self.connection.is_connected():

@@ -11,49 +11,59 @@ model = OvaModel()
 
 class OvaView:
     def __init__(self, root):
+        # Obtener el tamaño completo de la pantalla
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+        
         self.root = root
-        root.geometry("800x600")
+        #Ajustar el tamaño completo de la pantalla
+        root.geometry(f"{screen_width}x{screen_height}")
         self.root.title("OVA Interface")
         
         # Cargar la imagen original
-        self.original_image = Image.open("ova/sri.ico")
-        self.background_image = ImageTk.PhotoImage(self.original_image)
+        self.original_image = Image.open("ova/sri.jpg")
+        self.background_image = ImageTk.PhotoImage(self.original_image.resize((screen_height, screen_width)))
 
         # Crear un Canvas y agregar la imagen de fondo
-        self.canvas = tk.Canvas(root, width=800, height=600)
+        self.canvas = tk.Canvas(root, width=screen_width, height=screen_height)
         self.canvas.pack(fill="both", expand=True)
-
+        
         # Colocar la imagen en el Canvas
         self.background = self.canvas.create_image(0, 0, image=self.background_image, anchor="nw")
-
         # Redimensionar la imagen cuando se ajusta la ventana
         self.root.bind("<Configure>", self.ajustar_imagen)
+        
+        # Título principal del proyecto con sombreado
+        self.canvas.create_text(screen_width // 2 + 3, 53, text="Ordenes de Voz Aplicadas (OVA)", font=("Arial", 26, "bold"), fill="gray")  # Sombra
+        self.canvas.create_text(screen_width // 2, 50, text="Ordenes de Voz Aplicadas (OVA)", font=("Arial", 26, "bold"), fill="white")  # Texto principal
 
         # Frame para el formulario (colocado dentro del canvas)
         form_frame = tk.Frame(self.canvas, bg="white", bd=2)
-        self.canvas.create_window(400, 150, window=form_frame, anchor="n")
+        self.canvas.create_window(screen_width // 2, 100, window=form_frame, anchor="n")
 
         # Campos del formulario
         self.create_form(form_frame)
 
         # Text area para mostrar mensajes (colocado dentro del canvas)
-        self.text_area = ScrolledText(self.canvas, wrap=tk.WORD, width=50, height=10, font=("Arial", 12))
-        self.canvas.create_window(400, 300, window=self.text_area, anchor="n")
+        message_label_frame = tk.LabelFrame(self.canvas, text="Ventana de Mensajes del Asistente", font=("Arial", 14, "bold"))
+        self.canvas.create_window(screen_width // 2, 400, window=message_label_frame, anchor="n")
+
+        # Text area dentro del label frame
+        self.text_area = ScrolledText(message_label_frame, wrap=tk.WORD, width=80, height=10, font=("Arial", 12))
+        self.text_area.pack()
 
         # Frame para los botones (colocado dentro del canvas)
         button_frame = tk.Frame(self.canvas, bg="white")
-        self.canvas.create_window(400, 500, window=button_frame, anchor="n")
+        self.canvas.create_window(screen_width // 2, 620, window=button_frame, anchor="n")
 
-        # Botón 1: Iniciar OVA
+        # Botones
         self.start_button = tk.Button(button_frame, bg="green", text="Iniciar OVA")
         self.start_button.grid(row=0, column=0, padx=5)
 
-        # Botón 2: Reiniciar
-        self.reset_button = tk.Button(button_frame, text="Reiniciar",  command=self.reset_system, state=tk.DISABLED)
+        self.reset_button = tk.Button(button_frame, text="Reiniciar", state=tk.DISABLED)
         self.reset_button.grid(row=0, column=1, padx=5)
 
-        # Botón 3: Terminar OVA
-        self.terminate_button = tk.Button(button_frame, text="Terminar OVA", command=self.terminate_system, state=tk.DISABLED)
+        self.terminate_button = tk.Button(button_frame, text="Terminar OVA", state=tk.DISABLED)
         self.terminate_button.grid(row=0, column=2, padx=5)
         
         self.quit_button = tk.Button(button_frame, text="Cerrar OVA", command=self.root.destroy)
@@ -66,38 +76,43 @@ class OvaView:
         # Motor de texto a voz
         self.tts_engine = self.init_tts_engine()
         self.is_speaking = False 
-
+        
+        
     def ajustar_imagen(self, event):
-        # Redimensionar la imagen al tamaño actual de la ventana
-        nueva_imagen = self.original_image.resize((event.width, event.height))
-        self.background_image = ImageTk.PhotoImage(nueva_imagen)
-        self.canvas.itemconfig(self.background, image=self.background_image)
+        if event.width > 0 and event.height > 0:
+            nueva_imagen = self.original_image.resize((event.width, event.height))
+            self.background_image = ImageTk.PhotoImage(nueva_imagen)
+            self.canvas.itemconfig(self.background, image=self.background_image)
 
     def create_form(self, form_frame):
+        # Título del formulario
+        form_label_frame = tk.LabelFrame(form_frame, text="Formulario de Datos del Usuario", font=("Arial", 16, "bold"), padx=10, pady=10)
+        form_label_frame.grid(row=0, column=0, columnspan=2, pady=10, sticky="nsew")
+        
         # Nombre
-        tk.Label(form_frame, text="Nombre:").grid(row=0, column=0, sticky="w")
-        self.name_entry = tk.Entry(form_frame, width=30)
-        self.name_entry.grid(row=0, column=1)
+        tk.Label(form_label_frame, text="Nombre:").grid(row=0, column=0, sticky="w", padx=10, pady=5)
+        self.name_entry = tk.Entry(form_label_frame, width=30)
+        self.name_entry.grid(row=0, column=1, padx=10, pady=5)
 
         # Edad
-        tk.Label(form_frame, text="Edad:").grid(row=1, column=0, sticky="w")
-        self.age_entry = tk.Entry(form_frame, width=30)
-        self.age_entry.grid(row=1, column=1)
+        tk.Label(form_label_frame, text="Edad:").grid(row=1, column=0, sticky="w", padx=10, pady=5)
+        self.age_entry = tk.Entry(form_label_frame, width=30)
+        self.age_entry.grid(row=1, column=1, padx=10, pady=5)
 
         # Dirección
-        tk.Label(form_frame, text="Dirección:").grid(row=2, column=0, sticky="w")
-        self.address_entry = tk.Entry(form_frame, width=30)
-        self.address_entry.grid(row=2, column=1)
+        tk.Label(form_label_frame, text="Dirección:").grid(row=2, column=0, sticky="w", padx=10, pady=5)
+        self.address_entry = tk.Entry(form_label_frame, width=30)
+        self.address_entry.grid(row=2, column=1, padx=10, pady=5)
 
         # Teléfono
-        tk.Label(form_frame, text="Teléfono:").grid(row=3, column=0, sticky="w")
-        self.phone_entry = tk.Entry(form_frame, width=30)
-        self.phone_entry.grid(row=3, column=1)
+        tk.Label(form_label_frame, text="Teléfono:").grid(row=3, column=0, sticky="w", padx=10, pady=5)
+        self.phone_entry = tk.Entry(form_label_frame, width=30)
+        self.phone_entry.grid(row=3, column=1, padx=10, pady=5)
 
         # Email
-        tk.Label(form_frame, text="Correo Electrónico:").grid(row=4, column=0, sticky="w")
-        self.email_entry = tk.Entry(form_frame, width=30)
-        self.email_entry.grid(row=4, column=1)
+        tk.Label(form_label_frame, text="Correo Electrónico:").grid(row=4, column=0, sticky="w", padx=10, pady=5)
+        self.email_entry = tk.Entry(form_label_frame, width=30)
+        self.email_entry.grid(row=4, column=1, padx=10, pady=5)
 
 
     def reset_system(self):

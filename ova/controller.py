@@ -118,13 +118,15 @@ class OvaController:
             if self.validate_data(user_data):
                 print("Datos a guardar:", user_data)
                 self.model.save_user_data(user_data)
-                self.view.speak("Tus datos han sido guardados.")
+                self.view.speak("Tus datos han sido validados.")
+                self.view.log_message("Datos validados correctamente.")
             else:
                 self.view.speak("No se guardarán los datos debido a errores de validación.")
         else:
             self.view.speak("No se guardarán los datos.")
+            self.view.log_message("El usuario decidió no guardar los datos.")
             self.view.clear_form()
-
+            return 
 
 
     def update_user_data(self):
@@ -215,7 +217,7 @@ class OvaController:
             phone_input = re.sub(r'\D', '', phone_input)
 
             # Validar que el número tenga al menos 10 dígitos
-            if len(phone_input) < 10:
+            if len(phone_input) < 11:
                 self.view.log_message("Error: El número de teléfono debe tener al menos 10 dígitos.")
                 self.view.speak("El número de teléfono debe contener al menos 10 dígitos.")
                 return False
