@@ -64,6 +64,7 @@ class OvaController:
                 return response
             except sr.UnknownValueError:
                 self.view.log_message("No se pudo entender el audio.")
+                self.view.speak("Lo siento, no pude entender lo que dijiste. Por favor, intenta de nuevo.")
                 return None
 
     def ask_questions(self):
@@ -99,12 +100,19 @@ class OvaController:
         # Permitir modificar las respuestas
         self.view.fill_form_with_responses(responses)
         self.view.modify_responses(responses, questions, self)
-        self.view.send_data()
+        self.ask_to_save(responses) 
+        
 
     def ask_to_save(self, responses):
         self.view.speak("¿Deseas guardar tus respuestas? Responde sí o no.")
         response = self.listen_for_response()
-        if response and re.search(r'sí|si|yes', response, re.IGNORECASE):
+        
+        if response is None:  # Caso donde no se pudo entender el audio
+            self.view.speak("No se pudo entender tu respuesta, no se guardarán los datos.")
+            self.view.log_message("No se pudo entender el audio, abortando el guardado.")
+            return  # Salir de la función sin guardar
+            
+        if re.search(r'sí|si|yes', response, re.IGNORECASE):
             self.view.log_message("Guardando datos...")
             user_data = {
                 'name': responses.get("¿Cuál es tu nombre y apellido?", ""),
@@ -117,16 +125,18 @@ class OvaController:
             # Validar los datos antes de guardarlos
             if self.validate_data(user_data):
                 print("Datos a guardar:", user_data)
-                self.model.save_user_data(user_data)
+                self.view.send_data(user_data)
                 self.view.speak("Tus datos han sido validados.")
                 self.view.log_message("Datos validados correctamente.")
+                self.view.log_message("Los datos guardados fueron:", user_data)
             else:
                 self.view.speak("No se guardarán los datos debido a errores de validación.")
         else:
             self.view.speak("No se guardarán los datos.")
             self.view.log_message("El usuario decidió no guardar los datos.")
             self.view.clear_form()
-            return 
+            return  # Salir de la función sin guardar
+
 
 
     def update_user_data(self):
@@ -207,23 +217,30 @@ class OvaController:
 
         # Validar número de teléfono: Convertir palabras en números y eliminar espacios
         if 'phone' in user_data:
-            phone_input = user_data['phone'].lower().replace(' ', '')  # Convertir a minúsculas y eliminar espacios
+            phone_input = user_data['phone'].lower().replace(' ', '')  # Eliminar espacios
 
-            # Convertir palabras a números
+            # Diccionario para convertir palabras a números
+            number_word_mapping = {
+                'uno': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 'cinco': 5,
+                'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9, 'diez': 10
+                # Puedes añadir más si es necesario
+            }
+
+            # Convertir palabras a números si están en el input
             for word, digit in number_word_mapping.items():
                 phone_input = phone_input.replace(word, str(digit))
 
             # Eliminar cualquier carácter que no sea dígito (letras, símbolos, etc.)
             phone_input = re.sub(r'\D', '', phone_input)
 
-            # Validar que el número tenga al menos 10 dígitos
-            if len(phone_input) < 11:
-                self.view.log_message("Error: El número de teléfono debe tener al menos 10 dígitos.")
-                self.view.speak("El número de teléfono debe contener al menos 10 dígitos.")
+            # Validar que el número tenga entre 10 y 11 dígitos
+            if len(phone_input) < 10 or len(phone_input) > 11:
+                self.view.log_message("Error: El número de teléfono debe tener entre 10 y 11 dígitos.")
+                self.view.speak("El número de teléfono debe tener entre 10 y 11 dígitos.")
                 return False
 
-            # Guardar el número validado
-            user_data['phone'] = phone_input
+            user_data['phone'] = phone_input  # Guardar el número validado
+
 
         # Validar correo electrónico: Eliminar espacios y verificar el formato
         if 'email' in user_data:

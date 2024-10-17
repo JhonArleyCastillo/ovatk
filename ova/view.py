@@ -299,6 +299,7 @@ class OvaView:
         else:
             self.speak("No se guardarán los cambios.")
             self.log_message("El usuario decidió no guardar los cambios.")
+            return  # Salir de la función sin guardar
 
     def send_data(self,):
         user_data = self.get_form_data()
